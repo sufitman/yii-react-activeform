@@ -18,14 +18,14 @@ export default class Select extends React.Component<SelectProps> {
         .filter(i => i.selected && i.value)
         .map(i => i.value)
     }
-    updateAttribute && updateAttribute(this.props.attribute, attributeData, attributeData.options.validateOnChange);
+    updateAttribute && updateAttribute(this.props.attribute, attributeData, attributeData.options ? attributeData.options.validateOnChange : false);
   };
 
   getOnBlur = (updateAttribute?: ?UpdateAttributeCallback, attributeData: AttributeData) => () => {
-    updateAttribute && updateAttribute(this.props.attribute, attributeData, attributeData.options.validateOnBlur)
+    updateAttribute && updateAttribute(this.props.attribute, attributeData,  attributeData.options ? attributeData.options.validateOnBlur : false)
   };
 
-  getSelect = (id: string, attributeData: AttributeData, updateAttribute?: ?UpdateAttributeCallback): React.Node => {
+  getSelect = (id: string, attributeData: AttributeData, updateAttribute?: ?UpdateAttributeCallback): React.Element<*> => {
     const selectProps = {
       multiple: this.props.multiple,
       value: attributeData.value,

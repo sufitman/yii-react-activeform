@@ -2,6 +2,7 @@
 import * as React from "react";
 import ReactDOM from "react-dom";
 import { ActiveFormContext } from './ActiveFormContext'
+import inputs from './inputs';
 import type {
   ActiveFormContextProps,
   AttributeData,
@@ -11,6 +12,7 @@ import type {
   FormData,
 } from "./flow-typed/yiiAFLibDef";
 import Validators from './validators';
+import ErrorSummary from "./ErrorSummary";
 
 type ActiveFormProps = {
   action: string,
@@ -26,12 +28,18 @@ type ActiveFormProps = {
   validationDelay: number,
   scrollToError: boolean,
   scrollToErrorOffset: number,
-  children: React.Node,
+  children: any,
   id?: string,
+  customFields: { [type: string]: typeof React.Component },
+  fields: { [attribute: string]: { type: string, props: {} } },
   model: Model,
   validators: { [name: string]: ValidatorObject | ValidatorCallback },
   onFormSubmit: (formData: FormData) => void,
   onAjaxValidate: (formData: FormData) => Promise<{ [attribute: string]: Array<string> }>,
+  enableErrorSummary: bool,
+  errorSummaryOptions: {},
+  submitButtonText?: string,
+  submitButtonOptions: {},
 };
 
 
@@ -54,6 +62,11 @@ export default class ActiveForm extends React.Component<ActiveFormProps, ActiveF
     scrollToErrorOffset: 0,
     options: {},
     validators: {},
+    fields: {},
+    customFields: {},
+    enableErrorSummary: false,
+    errorSummaryOptions: {},
+    submitButtonOptions: { className: 'btn btn-primary'}
   };
 
   fieldRefs: {[attribute: string]: { current: any }} = {};
@@ -102,7 +115,8 @@ export default class ActiveForm extends React.Component<ActiveFormProps, ActiveF
     const attributeData = this._model[attribute];
     attributeData.errors = [];
     let errors: Array<string> = [];
-    if (attributeData.options.enableClientValidation) {
+
+    if (attributeData.options && attributeData.options.enableClientValidation) {
       const clientValidationErrors = await this.validateClient(attributeData);
       errors = await Promise.all(errors.concat(clientValidationErrors));
     }
@@ -128,7 +142,7 @@ export default class ActiveForm extends React.Component<ActiveFormProps, ActiveF
       });
 
       if (ajaxPerformed) {
-        if (!attributeData.options.enableAjaxValidation) {
+        if (attributeData.options && !attributeData.options.enableAjaxValidation) {
           attributeData.errors = [];
         }
         errors = await Promise.all(errors.concat(attributeData.errors || []));
@@ -267,9 +281,34 @@ export default class ActiveForm extends React.Component<ActiveFormProps, ActiveF
       setHasFile: this.setHasFile,
     };
 
+    let children: Array<?React.Element<any>> = [];
+    if (this.props.fields) {
+      Object.keys(this.props.fields).forEach((attribute, idx) => {
+        const field = this.props.fields[attribute];
+        const customFields = this.props.customFields;
+        let Tag = inputs[field.type];
+        if (!Tag) {
+          if (customFields && customFields[field.type]) {
+            Tag = customFields[field.type];
+          } else {
+            throw new Error(`Custom field '${field.type}' not found`);
+          }
+        }
+
+        if (Tag) {
+          children.push(<Tag attribute={ attribute } key={ `${field.type}-${idx}` } { ...field.props } />);
+        }
+      });
+      if (this.props.enableErrorSummary) {
+        children.push(<ErrorSummary { ...this.props.errorSummaryOptions }/>)
+      }
+      children.push(<button type="submit" { ...this.props.submitButtonOptions }>{ this.props.submitButtonText || 'Submit' }</button>)
+    } else {
+      children = this.props.children;
+    }
     return (
       <ActiveFormContext.Provider value={ contextProps }>
-        <form { ...formProps }>{ this.props.children }</form>
+        <form { ...formProps }>{ children }</form>
       </ActiveFormContext.Provider>
     );
   }

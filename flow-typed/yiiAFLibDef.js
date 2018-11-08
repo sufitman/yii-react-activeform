@@ -43,9 +43,9 @@ export type ValidationOptions = {
   validationDelay: number,
 };
 
-export type ValidatorCallback =  (value: any, options?: {}) => string;
+export type ValidatorCallback = (value: any, options?: {}) => string;
 
-export type ValidatorObject =  { validator: string, options: {} };
+export type ValidatorObject = { validator: string, options?: {} };
 
 export type AttributeData = {
   type?: string,
@@ -53,11 +53,11 @@ export type AttributeData = {
   hint?: string,
   errors?: Array<string>,
   value?: mixed,
-  rules: Array<ValidatorObject|ValidatorCallback>,
-  options: ValidationOptions
+  rules?: Array<ValidatorObject|ValidatorCallback>,
+  options?: ValidationOptions
 };
 
-export type Model= {[attribute: string]: AttributeData};
+export type Model = {[attribute: string]: AttributeData};
 
 export type ActiveFormContextProps = {
   successCssClass: string,

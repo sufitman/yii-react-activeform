@@ -34,7 +34,7 @@ export default class List extends React.Component<ListProps> {
     updateAttribute && updateAttribute(this.props.attribute, {
       ...attributeData,
       value: this.value
-    }, attributeData.options.validateOnChange);
+    }, attributeData.options ? attributeData.options.validateOnChange : false);
   };
 
   getList = (id: string, attributeData: AttributeData, updateAttribute?: ?UpdateAttributeCallback) => {

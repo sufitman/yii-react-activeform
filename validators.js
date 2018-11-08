@@ -35,22 +35,22 @@ const validateFile = (file: File, options: FileValidatorOptions): Array<string> 
     let ext = !~index ? '' : file.name.substr(index + 1, file.name.length).toLowerCase();
 
     if (!~options.extensions.indexOf(ext)) {
-      messages.push(options.wrongExtension.replace(/\{file\}/g, file.name));
+      messages.push(options.wrongExtension.replace(/{file}/g, file.name));
     }
   }
 
   if (options.mimeTypes && options.mimeTypes.length > 0) {
     if (!validateMimeType(options.mimeTypes, file.type)) {
-      messages.push(options.wrongMimeType.replace(/\{file\}/g, file.name));
+      messages.push(options.wrongMimeType.replace(/{file}/g, file.name));
     }
   }
 
   if (options.maxSize && options.maxSize < file.size) {
-    messages.push(options.tooBig.replace(/\{file\}/g, file.name));
+    messages.push(options.tooBig.replace(/{file}/g, file.name));
   }
 
   if (options.minSize && options.minSize > file.size) {
-    messages.push(options.tooSmall.replace(/\{file\}/g, file.name));
+    messages.push(options.tooSmall.replace(/{file}/g, file.name));
   }
 
   return messages;
@@ -70,19 +70,19 @@ type ImageValidatorOptions = FileValidatorOptions & {
 const validateImageSize = (file: File, image: Image, options: ImageValidatorOptions): Array<string> => {
   let messages = [];
   if (options.minWidth && image.width < options.minWidth) {
-    messages.push(options.underWidth.replace(/\{file\}/g, file.name));
+    messages.push(options.underWidth.replace(/{file}/g, file.name).replace(/{minWidth}/g, options.minWidth.toString()));
   }
 
   if (options.maxWidth && image.width > options.maxWidth) {
-    messages.push(options.overWidth.replace(/\{file\}/g, file.name));
+    messages.push(options.overWidth.replace(/{file}/g, file.name).replace(/{maxWidth}/g, options.maxWidth.toString()));
   }
 
   if (options.minHeight && image.height < options.minHeight) {
-    messages.push(options.underHeight.replace(/\{file\}/g, file.name));
+    messages.push(options.underHeight.replace(/{file}/g, file.name).replace(/{minHeight}/g, options.minHeight.toString()));
   }
 
   if (options.maxHeight && image.height > options.maxHeight) {
-    messages.push(options.overHeight.replace(/\{file\}/g, file.name));
+    messages.push(options.overHeight.replace(/{file}/g, file.name).replace(/{maxHeight}/g, options.maxHeight.toString()));
   }
   return messages;
 };
@@ -101,7 +101,7 @@ const validateImage = (
     };
 
     image.onerror = () => {
-      messages.push(options.notImage.replace(/\{file\}/g, file.name));
+      messages.push(options.notImage.replace(/{file}/g, file.name));
       resolve(messages);
     };
 
@@ -122,7 +122,11 @@ type RequiredValidatorOptions = {
   strict: boolean,
   message: string
 };
-export const required = (value: any, options: RequiredValidatorOptions): void | string => {
+export const required = (value: any, clientOptions: RequiredValidatorOptions): void | string => {
+  const options = { ...{
+    message: 'The value is required',
+    strict: false,
+  }, ...clientOptions };
   let valid = false;
   if (options.requiredValue === undefined) {
     let isString = typeof value === 'string' || value instanceof String;
@@ -145,7 +149,14 @@ type BooleanValidatorOptions = {
   falseValue: any,
   message: string
 }
-export const boolean = (value: any, options: BooleanValidatorOptions): void | string  => {
+export const boolean = (value: any, clientOptions: BooleanValidatorOptions): void | string  => {
+  const options = { ...{
+    skipOnEmpty: false,
+    strict: false,
+    trueValue: '1',
+    falseValue: '0',
+    message: '{value} is not boolean'
+  }, ...clientOptions };
   if (options.skipOnEmpty && isEmpty(value)) {
     return;
   }
@@ -167,7 +178,13 @@ type StringValidatorOptions = {
   tooLong: string,
   message: string,
 }
-export const string = (value: any, options: StringValidatorOptions): Array<string>  => {
+export const string = (value: any, clientOptions: StringValidatorOptions): Array<string>  => {
+  const options = { ...{
+    message: '{value} is not a string',
+    notEqual: 'Value length must be {is}',
+    tooShort: 'Value length must be more than {min}',
+    tooLong: 'Value length must be less than {max}',
+  }, ...clientOptions };
   let messages = [];
   if (options.skipOnEmpty && isEmpty(value)) {
     return messages;
@@ -176,13 +193,13 @@ export const string = (value: any, options: StringValidatorOptions): Array<strin
     messages.push(prepareMessage(options.message, value));
   }
   if (options.is !== undefined && value.length !== options.is) {
-    messages.push(prepareMessage(options.notEqual, value));
+    messages.push(prepareMessage(options.notEqual, value).replace(/{is}/g, options.is.toString()));
   }
   if (options.min !== undefined && value.length < options.min) {
-    messages.push(prepareMessage(options.tooShort, value));
+    messages.push(prepareMessage(options.tooShort, value).replace(/{min}/g, options.min.toString()));
   }
   if (options.max !== undefined && value.length > options.max) {
-    messages.push(prepareMessage(options.tooLong, value));
+    messages.push(prepareMessage(options.tooLong, value).replace(/{max}/g, options.max.toString()));
   }
   return messages;
 };
@@ -195,7 +212,18 @@ export const file = (files: FileList, options: FileValidatorOptions): Array<stri
   return errors;
 };
 
-export const image = async (files: Array<File>, options: ImageValidatorOptions): Promise<Array<string>> => {
+export const image = async (files: Array<File>, clientOptions: ImageValidatorOptions): Promise<Array<string>> => {
+  const options = { ...{
+    notImage: '"{file}" is not an image"!',
+    underWidth: 'Width of "{file}" is less than {minWidth}px',
+    overWidth: '"{file}" is wider than {maxWidth}px',
+    underHeight: '"{file}" is lower than {minHeight}px',
+    overHeight: '"{file}" is higher than {maxHeight}px',
+    wrongExtension: '"{file}" has wrong extension',
+    wrongMimeType: '"{file}" has wrong MIME-type',
+    tooBig: '"{file}" is too big',
+    tooSmall: '"{file}" is too small',
+  }, ...clientOptions };
   let errors = [];
   const filesArray = Array.from(files || []);
   await Promise.all(filesArray.map(async (file) => {
@@ -215,7 +243,13 @@ type NumberValidatorOptions = {
   min: number,
   max: number,
 };
-export const number = (value: any, options: NumberValidatorOptions): Array<string> => {
+export const number = (value: any, clientOptions: NumberValidatorOptions): Array<string> => {
+  const options = { ...{
+      message: '{value} is not a number',
+      pattern: /^\s*[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?\s*$/,
+      tooBig: 'Value must be less than {max}',
+      tooSmall: 'Value must be bigger than {min}',
+  }, ...clientOptions }
   let errors = [];
   if (options.skipOnEmpty && isEmpty(value)) {
     return errors;
@@ -228,10 +262,10 @@ export const number = (value: any, options: NumberValidatorOptions): Array<strin
   }
 
   if (options.min !== undefined && value < options.min) {
-    errors.push(prepareMessage(options.tooSmall, value));
+    errors.push(prepareMessage(options.tooSmall, value).replace(/{min}/g, options.min.toString()));
   }
   if (options.max !== undefined && value > options.max) {
-    errors.push(prepareMessage(options.tooBig, value));
+    errors.push(prepareMessage(options.tooBig, value).replace(/{max}/g, options.max.toString()));
   }
   return errors;
 };
@@ -243,7 +277,13 @@ type RangeValidatorOptions = {
   message: string,
   range: Array<*>,
 };
-export const range = (value: any, options: RangeValidatorOptions): void | string  => {
+export const range = (value: any, clientOptions: RangeValidatorOptions): void | string  => {
+  const options = { ...{
+    skipOnEmpty: true,
+    allowArray: false,
+    not: false,
+    message: '{value} is not in range',
+  }, ...clientOptions };
   if (options.skipOnEmpty && isEmpty(value)) {
     return;
   }
@@ -275,7 +315,12 @@ type RegexValidatorOptions = {
   pattern: RegExp,
   message: string,
 };
-export const regularExpression = (value: any, options: RegexValidatorOptions): void | string  => {
+export const regularExpression = (value: any, clientOptions: RegexValidatorOptions): void | string  => {
+  const options = { ...{
+      skipOnEmpty: true,
+      not: false,
+      message: 'Value invalid',
+  }, ...clientOptions };
   if (options.skipOnEmpty && isEmpty(value)) {
     return;
   }
@@ -293,7 +338,15 @@ type EmailValidatorOptions = {
   fullPattern: RegExp,
   message: string,
 };
-export const email = (value: any, options: EmailValidatorOptions): void | string  => {
+export const email = (value: any, clientOptions: EmailValidatorOptions): void | string  => {
+  const options = { ...{
+    skipOnEmpty: true,
+    enableIDN: false,
+    allowName: false,
+    pattern: /^[a-zA-Z0-9!#$%&'*+\\/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+\\/=?^_`{|}~-]+)*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?$/,
+    fullPattern: /^[^@]*<[a-zA-Z0-9!#$%&'*+\\/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+\\/=?^_`{|}~-]+)*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?>$/,
+    message: '"{value}" is not valid email',
+  }, ...clientOptions };
   if (options.skipOnEmpty && isEmpty(value)) {
     return;
   }
@@ -336,7 +389,14 @@ type UrlValidatorOptions = {
   pattern: RegExp,
   message: string,
 };
-export const url = (value: any, options: UrlValidatorOptions): void | string  => {
+export const url = (value: any, clientOptions: UrlValidatorOptions): void | string  => {
+  const options = { ...{
+    skipOnEmpty: true,
+    enableIDN: true,
+    message: 'Value is not valid URL',
+  }, ...clientOptions };
+  options.pattern = options.pattern || new RegExp(`^${ options.defaultScheme || '(http|https)' }:\/\/(([A-Z0-9][A-Z0-9_-]*)(\.[A-Z0-9][A-Z0-9_-]*)+)(?::\\d{1,5})?(?:$|[?\/#])`, 'i');
+
   if (options.skipOnEmpty && isEmpty(value)) {
     return;
   }
@@ -367,7 +427,12 @@ type CaptchaValidatorOptions = {
   hash: string,
   message: string,
 };
-export const captcha = (value: any, options: CaptchaValidatorOptions): void | string  => {
+export const captcha = (value: any, clientOptions: CaptchaValidatorOptions): void | string  => {
+  const options = { ...{
+    skipOnEmpty: false,
+    caseSensitive: false,
+    message: '{value} does not match',
+  }, ...clientOptions };
   if (options.skipOnEmpty && isEmpty(value)) {
     return;
   }
@@ -390,7 +455,11 @@ type CompareValidatorOptions = {
   operator: string,
   message: string,
 };
-export const compare = (value: any, options: CompareValidatorOptions): void | string  => {
+export const compare = (value: any, clientOptions: CompareValidatorOptions): void | string  => {
+  const options = { ...{
+      skipOnEmpty: true,
+      message: 'Comparison failed',
+  }, ...clientOptions };
   if (options.skipOnEmpty && isEmpty(value)) {
     return;
   }
@@ -446,15 +515,28 @@ type IpValidatorOptions = {
   ipv4: boolean,
   subnet: boolean,
   negation: boolean,
-  messages: {
-    noSubnet: string,
-    hasSubnet: string,
-    message: string,
-    ipv6NotAllowed: string,
-    ipv4NotAllowed: string,
-  },
+  noSubnet: string,
+  hasSubnet: string,
+  message: string,
+  ipv6NotAllowed: string,
+  ipv4NotAllowed: string,
 };
-export const ip = (value: any, options: IpValidatorOptions) => {
+export const ip = (value: any, clientOptions: IpValidatorOptions) => {
+  const options = { ...{
+    skipOnEmpty: true,
+    ipParsePattern: /^(\!?)(.+?)(\/(\d+))?$/,
+    ipv6Pattern: /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/,
+    ipv4Pattern: /^(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))$/,
+    ipv6: true,
+    ipv4: true,
+    subnet: false,
+    negation: false,
+    noSubnet: 'Value must be an IP address with specified subnet',
+    hasSubnet: 'Value must not be a subnet',
+    message: 'Value must be a valid IP address',
+    ipv6NotAllowed: 'Value must not be an IPv6 address',
+    ipv4NotAllowed: 'Value must not be an IPv4 address',
+  }, ...clientOptions };
   let messages = [];
   if (options.skipOnEmpty && isEmpty(value)) {
     return messages;
@@ -470,29 +552,29 @@ export const ip = (value: any, options: IpValidatorOptions) => {
   }
 
   if (options.subnet === true && cidr === null) {
-    return prepareMessage(options.messages.noSubnet, value);
+    return prepareMessage(options.noSubnet, value);
   }
   if (options.subnet === false && cidr !== null) {
-    return prepareMessage(options.messages.hasSubnet, value);
+    return prepareMessage(options.hasSubnet, value);
   }
   if (options.negation === false && negation !== null) {
-    return prepareMessage(options.messages.message, value);
+    return prepareMessage(options.message, value);
   }
 
   let ipVersion = value.indexOf(':') === -1 ? 4 : 6;
   if (ipVersion === 6) {
     if (!(new RegExp(options.ipv6Pattern)).test(value)) {
-      messages.push(prepareMessage(options.messages.message, value));
+      messages.push(prepareMessage(options.message, value));
     }
     if (!options.ipv6) {
-      messages.push(prepareMessage(options.messages.ipv6NotAllowed, value));
+      messages.push(prepareMessage(options.ipv6NotAllowed, value));
     }
   } else {
     if (!(new RegExp(options.ipv4Pattern)).test(value)) {
-      messages.push(prepareMessage(options.messages.message, value));
+      messages.push(prepareMessage(options.message, value));
     }
     if (!options.ipv4) {
-      messages.push(prepareMessage(options.messages.ipv4NotAllowed, value));
+      messages.push(prepareMessage(options.ipv4NotAllowed, value));
     }
   }
   return messages

@@ -10,7 +10,7 @@ export default class Input extends React.Component<InputProps> {
     enclosedByLabel: false,
   };
 
-  getCallback = (updateAttribute?: ?UpdateAttributeCallback, attributeData: AttributeData, validate: boolean) => (e: SyntheticEvent<*>) => {
+  getCallback = (updateAttribute?: ?UpdateAttributeCallback, attributeData: AttributeData, validate: boolean = false) => (e: SyntheticEvent<*>) => {
     let value;
     if (this.props.type === 'checkbox') {
       value = e.currentTarget.checked;
@@ -36,7 +36,7 @@ export default class Input extends React.Component<InputProps> {
       ...this.props.inputOptions
     };
 
-    let validateOnChange = attributeData.options.validateOnChange;
+    let validateOnChange = attributeData.options && attributeData.options.validateOnChange;
     if (this.props.type === 'checkbox') {
       props.checked = attributeData.value || false;
     } else if (this.props.type === 'radio') {
@@ -45,7 +45,7 @@ export default class Input extends React.Component<InputProps> {
       props.files = attributeData.value;
     } else {
       props.value = attributeData.value || '';
-      validateOnChange = attributeData.options.validateOnType
+      validateOnChange = attributeData.options && attributeData.options.validateOnType
     }
     if (Array.isArray(attributeData.errors) && attributeData.errors.length) {
       props['aria-invalid'] = true;
@@ -57,7 +57,7 @@ export default class Input extends React.Component<InputProps> {
     return <Tag
       { ...props }
       onChange={ this.getCallback(updateAttribute, attributeData, validateOnChange) }
-      onBlur={ this.getCallback(updateAttribute, attributeData, attributeData.options.validateOnBlur) }
+      onBlur={ this.getCallback(updateAttribute, attributeData, attributeData.options && attributeData.options.validateOnBlur) }
     />;
   };
 

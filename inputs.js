@@ -38,8 +38,7 @@ const ListBox = (props: SelectProps): React.Node => <Select { ...multipleList(pr
 const CheckboxList = (props: ListProps): React.Node => <List { ...withType(props, 'checkbox') } />;
 const RadioList = (props: ListProps): React.Node => <List { ...multipleList(withType(props, 'radio'), false) } />;
 
-export {
-  withoutLabel,
+const inputs = {
   TextInput,
   PasswordInput,
   HiddenInput,
@@ -52,3 +51,6 @@ export {
   CheckboxList,
   RadioList,
 };
+
+export { withoutLabel };
+export default inputs;
