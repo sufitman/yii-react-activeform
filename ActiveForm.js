@@ -15,7 +15,7 @@ import Validators from './validators';
 import ErrorSummary from "./ErrorSummary";
 
 type ActiveFormProps = {
-  action: string,
+  action?: string,
   options: {},
   errorCssClass: string,
   successCssClass: string,
@@ -31,9 +31,9 @@ type ActiveFormProps = {
   children: any,
   id?: string,
   customFields: { [type: string]: typeof React.Component },
-  fields: { [attribute: string]: { type: string, props: {} } },
+  fields: { [attribute: string]: { type: string, props?: {} } },
   model: Model,
-  validators: { [name: string]: ValidatorObject | ValidatorCallback },
+  customValidators: { [name: string]: ValidatorObject | ValidatorCallback },
   onFormSubmit: (formData: FormData) => void,
   onAjaxValidate: (formData: FormData) => Promise<{ [attribute: string]: Array<string> }>,
   enableErrorSummary: bool,
@@ -61,7 +61,7 @@ export default class ActiveForm extends React.Component<ActiveFormProps, ActiveF
     scrollToError: true,
     scrollToErrorOffset: 0,
     options: {},
-    validators: {},
+    customValidators: {},
     fields: {},
     customFields: {},
     enableErrorSummary: false,
@@ -178,7 +178,7 @@ export default class ActiveForm extends React.Component<ActiveFormProps, ActiveF
     await Promise.all(attributeData.rules.map(async (rule: ValidatorObject | ValidatorCallback) => {
       let message;
       if (typeof rule === 'object') {
-        const validator = Validators[rule.validator] || this.props.validators[rule.validator];
+        const validator = Validators[rule.validator] || this.props.customValidators[rule.validator];
         if (validator && typeof validator === 'function') {
           message = await validator(attributeData.value, rule.options);
         }
@@ -207,6 +207,9 @@ export default class ActiveForm extends React.Component<ActiveFormProps, ActiveF
   };
 
   submitForm = (e: SyntheticEvent<*>) => {
+    if (this.props.action) {
+      return true;
+    }
     e.preventDefault();
     const formData = this._getFormData();
     if (this.props.validateOnSubmit) {
@@ -302,7 +305,7 @@ export default class ActiveForm extends React.Component<ActiveFormProps, ActiveF
       if (this.props.enableErrorSummary) {
         children.push(<ErrorSummary { ...this.props.errorSummaryOptions }/>)
       }
-      children.push(<button type="submit" { ...this.props.submitButtonOptions }>{ this.props.submitButtonText || 'Submit' }</button>)
+      children.push(<button key={ `${this.id}-submit-button` } type="submit" { ...this.props.submitButtonOptions }>{ this.props.submitButtonText || 'Submit' }</button>)
     } else {
       children = this.props.children;
     }
